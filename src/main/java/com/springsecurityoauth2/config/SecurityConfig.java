@@ -1,35 +1,33 @@
 package com.springsecurityoauth2.config;
 
-import com.springsecurityoauth2.security.CustomAuthenticationFailureHandler;
 import com.springsecurityoauth2.security.OAuth2LogoutSuccessHandler;
 import com.springsecurityoauth2.service.OAuth2UserServiceImpl;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
     private final OAuth2UserServiceImpl oAuth2UserService;
 
     private final OAuth2AuthorizedClientService authorizedClientService;
 
-    private final ClientRegistrationRepository clientRegistrationRepository;
-
-    private final CustomAuthenticationFailureHandler customAuthenticationFailureHandler;
-
-    public SecurityConfig(OAuth2UserServiceImpl oAuth2UserService, OAuth2AuthorizedClientService authorizedClientService, ClientRegistrationRepository clientRegistrationRepository, CustomAuthenticationFailureHandler customAuthenticationFailureHandler) {
+    public SecurityConfig(OAuth2UserServiceImpl oAuth2UserService, OAuth2AuthorizedClientService authorizedClientService) {
         this.oAuth2UserService = oAuth2UserService;
         this.authorizedClientService = authorizedClientService;
-        this.clientRegistrationRepository = clientRegistrationRepository;
-        this.customAuthenticationFailureHandler = customAuthenticationFailureHandler;
     }
 
     @Bean
@@ -44,7 +42,11 @@ public class SecurityConfig {
                 .oauth2Login(oauth2Login -> oauth2Login
                         .userInfoEndpoint(userInfoEndpoint -> userInfoEndpoint
                                 .userService(oAuth2UserService))
-                        .defaultSuccessUrl("/user")
+                        .failureHandler(authenticationFailureHandler())
+                        .successHandler((request, response, authentication) -> {
+                            logger.info("User '{}' successfully authenticated", authentication.getName());
+                            response.sendRedirect("/user");
+                        })
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout") // URL для выхода
@@ -53,6 +55,17 @@ public class SecurityConfig {
                         .clearAuthentication(true)
                 );
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationFailureHandler authenticationFailureHandler() {
+        return (request, response, exception) -> {
+            if (exception instanceof OAuth2AuthenticationException) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth2 authentication failed");
+            } else {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Authentication failed");
+            }
+        };
     }
 
     @Bean
