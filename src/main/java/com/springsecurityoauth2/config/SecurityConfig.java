@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @EnableWebSecurity
@@ -36,7 +37,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers("/h2-console/*").permitAll()
                         .requestMatchers("/login", "/logout").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN") // Только для администраторов
+                        .requestMatchers("/admin/**").hasAuthority("OAUTH2_ADMIN") // Только для администраторов
+                        .requestMatchers("/user").hasAuthority("OAUTH2_USER")
                         .anyRequest().authenticated() // Все остальные запросы требуют аутентификации
                 )
                 .oauth2Login(oauth2Login -> oauth2Login
@@ -53,6 +55,8 @@ public class SecurityConfig {
                         .logoutSuccessHandler(logoutSuccessHandler()) // Обработчик для логаута
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
                 );
         return http.build();
     }
@@ -70,6 +74,6 @@ public class SecurityConfig {
 
     @Bean
     public LogoutSuccessHandler logoutSuccessHandler() {
-        return new OAuth2LogoutSuccessHandler(authorizedClientService);
+        return new OAuth2LogoutSuccessHandler(authorizedClientService, new RestTemplate());
     }
 }
