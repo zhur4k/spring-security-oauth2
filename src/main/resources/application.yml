@@ -8,3 +8,20 @@ spring:
             client-secret:
             scope: profile, email
             redirect-uri: http://localhost:8080/login/oauth2/code/google
+  datasource:
+    url: jdbc:h2:mem:testdb # Для использования базы в памяти, либо jdbc:h2:file:/path/to/db для использования файловой базы
+    driverClassName: org.h2.Driver
+    username: sa # Имя пользователя
+    password: password # Пароль (можно оставить пустым для дефолтных настроек)
+    hikari:
+      maximum-pool-size: 10 # Размер пула соединений
+    h2:
+      console:
+        enabled: true # Включаем консоль H2 для доступа через браузер
+        path: /h2-console # Путь для доступа к консоли
+    jpa:
+      hibernate:
+        ddl-auto: update # Автоматическое обновление схемы БД (можно использовать create, create-drop, none)
+      database-platform: org.hibernate.dialect.H2Dialect
+      show-sql: true # Показывать SQL запросы в логах
+      generate-ddl: true # Генерировать DDL схемы
