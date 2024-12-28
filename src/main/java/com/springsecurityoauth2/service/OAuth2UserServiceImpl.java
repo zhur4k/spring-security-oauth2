@@ -26,9 +26,13 @@ public class OAuth2UserServiceImpl implements OAuth2UserService<OAuth2UserReques
         OAuth2User oAuth2User = new DefaultOAuth2UserService().loadUser(userRequest);
 
         String email = oAuth2User.getAttribute("email");
-        User user = new User();
-        user.setEmail(email);
-        user.setRoles(Set.of(Role.USER));
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setEmail(email);
+                    newUser.setRoles(Set.of(Role.USER));
+                    return newUser;
+                });
 
         userRepository.save(user);
         return oAuth2User;
